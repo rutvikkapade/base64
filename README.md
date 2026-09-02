@@ -44,6 +44,24 @@ Open [http://localhost:3000](http://localhost:3000), paste the `b64v1.…` text,
 
 To rotate the secret: change `PLAYBACK_SECRET` in the Vercel dashboard and **redeploy**. Payloads encrypted with the old secret will no longer decrypt.
 
+## PayPal download ($10)
+
+Watching is free. **Download · $10** sends the client to PayPal. After a successful $10 payment they return here and can download the file.
+
+1. Create an app at [developer.paypal.com](https://developer.paypal.com/dashboard/applications).
+2. Add to `.env.local` (and Vercel):
+
+```
+PAYPAL_CLIENT_ID=...
+PAYPAL_CLIENT_SECRET=...
+PAYPAL_MODE=sandbox
+APP_URL=http://localhost:3000
+```
+
+3. Use `PAYPAL_MODE=live` and your live credentials in production. Set `APP_URL` to the public site URL (PayPal return links need it).
+
+Restart `npm run dev` after changing env vars.
+
 ```bash
 npx vercel
 ```
