@@ -56,7 +56,7 @@ code {
   font-size: clamp(2rem, 4vw, 3rem);
   letter-spacing: -0.04em;
   font-weight: 650;
-  margin: 6px 0 10px;
+  margin: 0 0 10px;
 }
 
 .eyebrow {
@@ -115,7 +115,7 @@ code {
   flex-wrap: wrap;
   gap: 16px;
   align-items: end;
-  justify-content: space-between;
+  justify-content: flex-end;
 }
 
 .mime {

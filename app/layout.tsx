@@ -13,9 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Encrypted video player",
-  description:
-    "Paste an encrypted video payload and play it in the browser.",
+  title: "Watch video",
+  description: "Paste the code you were given to watch the video.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
