@@ -147,6 +147,13 @@ code {
   color: var(--muted);
 }
 
+.mime-hint {
+  font-size: 0.85rem;
+  color: var(--muted);
+  max-width: 36ch;
+  line-height: 1.45;
+}
+
 .actions {
   display: flex;
   gap: 10px;

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { decodeBase64ToBytes, parseBase64Input } from "@/lib/decode-base64";
+import { decryptEnvelope, isEnvelope } from "@/lib/envelope";
 
 const MIME_OPTIONS = [
   { value: "video/mp4", label: "MP4 (video/mp4)" },
@@ -21,6 +22,7 @@ export default function Converter() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const objectUrlRef = useRef<string | null>(null);
+  const encryptedPaste = isEnvelope(input);
 
   function replaceObjectUrl(next: string | null) {
     if (objectUrlRef.current) {
@@ -38,30 +40,54 @@ export default function Converter() {
     };
   }, []);
 
+  function playBytes(bytes: Uint8Array<ArrayBuffer>, type: string, note: string) {
+    const blob = new Blob([bytes], { type });
+    const url = URL.createObjectURL(blob);
+    replaceObjectUrl(url);
+    const sizeKb = (bytes.byteLength / 1024).toFixed(1);
+    setStatus({ kind: "ok", text: `${note} ${sizeKb} KB as ${type}.` });
+  }
+
   async function handleConvert() {
     if (!input.trim()) {
-      setStatus({ kind: "error", text: "Paste base64 (or a data URL) first." });
+      setStatus({
+        kind: "error",
+        text: "Paste encrypted payload (or raw base64) first.",
+      });
       return;
     }
 
-    setStatus({ kind: "busy", text: "Decoding…" });
+    setStatus({
+      kind: "busy",
+      text: encryptedPaste ? "Decrypting…" : "Decoding…",
+    });
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     try {
+      if (isEnvelope(input)) {
+        const response = await fetch("/api/playback", { cache: "no-store" });
+        const body = (await response.json()) as {
+          secret?: string;
+          error?: string;
+        };
+        if (!response.ok || !body.secret) {
+          throw new Error(
+            body.error || "Could not load the playback secret from the server.",
+          );
+        }
+        const { bytes, mime } = await decryptEnvelope(input, body.secret);
+        playBytes(bytes, mime, "Decrypted");
+        return;
+      }
+
       const { mimeType, payload } = parseBase64Input(input);
       const bytes = decodeBase64ToBytes(payload);
       const type = mimeType || selectedMime;
-      const blob = new Blob([bytes], { type });
-      const url = URL.createObjectURL(blob);
-      replaceObjectUrl(url);
-
-      const sizeKb = (bytes.byteLength / 1024).toFixed(1);
-      setStatus({
-        kind: "ok",
-        text: mimeType
-          ? `Decoded ${sizeKb} KB as ${type} (from data URL).`
-          : `Decoded ${sizeKb} KB as ${type}.`,
-      });
+      playBytes(
+        bytes,
+        type,
+        mimeType ? "Decoded (from data URL)" : "Decoded",
+      );
     } catch (error) {
       replaceObjectUrl(null);
       setStatus({
@@ -83,43 +109,47 @@ export default function Converter() {
   return (
     <div className="shell">
       <header className="hero">
-        <p className="eyebrow">Client-side only</p>
-        <h1>Base64 to video</h1>
+        <p className="eyebrow">Decrypt locally in the browser</p>
+        <h1>Encrypted video player</h1>
         <p className="lede">
-          Paste raw base64 or a <code>data:video/…;base64,</code> URL. Nothing is
-          uploaded — decoding happens in your browser.
+          Paste a <code>b64v1.</code> payload. The key stays in the cloud (Vercel
+          env); you only paste the encrypted code.
         </p>
       </header>
 
-      <section className="panel" aria-label="Base64 input">
+      <section className="panel" aria-label="Encrypted payload">
         <label className="field-label" htmlFor="base64-input">
-          Base64
+          Encrypted code
         </label>
         <textarea
           id="base64-input"
           className="paste"
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder="AAAAHGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAA… or data:video/mp4;base64,…"
+          placeholder="b64v1.AAAA…  (or raw / data URL base64)"
           spellCheck={false}
           autoComplete="off"
         />
 
         <div className="toolbar">
-          <label className="mime">
-            <span>Format</span>
-            <select
-              value={selectedMime}
-              onChange={(event) => setSelectedMime(event.target.value)}
-            >
-              {MIME_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <em>Used when the paste has no data-URL type.</em>
-          </label>
+          {!encryptedPaste ? (
+            <label className="mime">
+              <span>Format</span>
+              <select
+                value={selectedMime}
+                onChange={(event) => setSelectedMime(event.target.value)}
+              >
+                {MIME_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <em>Used only for unencrypted pastes.</em>
+            </label>
+          ) : (
+            <p className="mime-hint">Encrypted payload detected. Format is inside the file.</p>
+          )}
 
           <div className="actions">
             <button
@@ -136,7 +166,11 @@ export default function Converter() {
               onClick={handleConvert}
               disabled={status.kind === "busy"}
             >
-              {status.kind === "busy" ? "Decoding…" : "Convert & play"}
+              {status.kind === "busy"
+                ? encryptedPaste
+                  ? "Decrypting…"
+                  : "Decoding…"
+                : "Decrypt & play"}
             </button>
           </div>
         </div>
@@ -160,13 +194,13 @@ export default function Converter() {
             onError={() =>
               setStatus({
                 kind: "error",
-                text: "Decoded successfully, but this browser could not play those bytes. Try another format.",
+                text: "Decrypted successfully, but this browser could not play those bytes.",
               })
             }
           />
         ) : (
           <div className="player-empty">
-            Converted video will appear here.
+            Decrypted video will appear here.
           </div>
         )}
       </section>
