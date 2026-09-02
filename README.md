@@ -46,7 +46,7 @@ To rotate the secret: change `PLAYBACK_SECRET` in the Vercel dashboard and **red
 
 ## PayPal download ($10)
 
-Watching is free. **Download · $10** sends the client to PayPal. After a successful $10 payment they return here and can download the file.
+Watching is free. **Download at higher quality** sends the client to PayPal. After a successful $10 payment the full-quality file starts downloading. Each download click requires a new payment.
 
 1. Create an app at [developer.paypal.com](https://developer.paypal.com/dashboard/applications).
 2. Add to `.env.local` (and Vercel):

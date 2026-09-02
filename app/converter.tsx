@@ -45,7 +45,6 @@ export default function Converter() {
   const [input, setInput] = useState("");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const [paid, setPaid] = useState(false);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const objectUrlRef = useRef<string | null>(null);
   const blobRef = useRef<Blob | null>(null);
@@ -125,25 +124,35 @@ export default function Converter() {
     const saved = sessionStorage.getItem(CODE_STORAGE_KEY);
 
     void (async () => {
-      try {
-        const response = await fetch("/api/paypal/status", { cache: "no-store" });
-        const body = (await response.json()) as { paid?: boolean };
-        const isPaid = Boolean(body.paid);
-        setPaid(isPaid);
+      if (saved) {
+        setInput(saved);
+        await loadVideo(saved);
+      }
 
-        if (saved) {
-          setInput(saved);
-          await loadVideo(saved);
-          if (blobRef.current && (isPaid || paidReturn)) {
-            setStatus({ kind: "ok", text: "Payment received. You can download now." });
-          } else if (canceled && blobRef.current) {
-            setStatus({ kind: "error", text: "Payment canceled. You can still watch." });
+      if (paidReturn && blobRef.current) {
+        try {
+          const response = await fetch("/api/paypal/claim", {
+            method: "POST",
+            cache: "no-store",
+          });
+          const body = (await response.json()) as { download?: boolean };
+          if (body.download) {
+            downloadBlob();
+            setStatus({ kind: "ok", text: "Download started." });
+          } else {
+            setStatus({
+              kind: "error",
+              text: "Payment received, but the download didn't start. Try again.",
+            });
           }
-        } else if (isPaid || paidReturn) {
-          setStatus({ kind: "ok", text: "Payment received. Paste the code, then download." });
+        } catch {
+          setStatus({
+            kind: "error",
+            text: "Payment received, but the download didn't start. Try again.",
+          });
         }
-      } catch {
-        setPaid(false);
+      } else if (canceled && blobRef.current) {
+        setStatus({ kind: "error", text: "Payment canceled. You can still watch." });
       }
 
       if (params.has("paid") || params.has("canceled")) {
@@ -182,11 +191,6 @@ export default function Converter() {
   }
 
   async function handleDownload() {
-    if (paid) {
-      downloadBlob();
-      return;
-    }
-
     if (!input.trim() && !sessionStorage.getItem(CODE_STORAGE_KEY)) {
       setStatus({ kind: "error", text: "Paste the code first." });
       return;

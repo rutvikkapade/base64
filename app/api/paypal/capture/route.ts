@@ -4,8 +4,8 @@ import {
   appBaseUrl,
   captureCheckoutOrder,
   cookieOptions,
+  DOWNLOAD_ONCE_COOKIE,
   ORDER_COOKIE,
-  PAID_COOKIE,
 } from "@/lib/paypal";
 
 export const dynamic = "force-dynamic";
@@ -24,9 +24,10 @@ export async function GET(request: Request) {
     await captureCheckoutOrder(token);
     const response = NextResponse.redirect(new URL("/?paid=1", base));
     response.cookies.set(ORDER_COOKIE, "", { ...cookieOptions(), maxAge: 0 });
-    response.cookies.set(PAID_COOKIE, "1", {
+    response.cookies.set("download_paid", "", { ...cookieOptions(), maxAge: 0 });
+    response.cookies.set(DOWNLOAD_ONCE_COOKIE, "1", {
       ...cookieOptions(),
-      maxAge: 60 * 60 * 24,
+      maxAge: 120,
     });
     return response;
   } catch {

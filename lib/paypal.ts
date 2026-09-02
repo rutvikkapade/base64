@@ -1,6 +1,6 @@
 export const DOWNLOAD_PRICE = "10.00";
 export const DOWNLOAD_CURRENCY = "USD";
-export const PAID_COOKIE = "download_paid";
+export const DOWNLOAD_ONCE_COOKIE = "download_once";
 export const ORDER_COOKIE = "paypal_order";
 
 export function paypalApiBase(): string {
