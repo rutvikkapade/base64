@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { decodeBase64ToBytes, parseBase64Input } from "@/lib/decode-base64";
 import { decryptEnvelope, isEnvelope } from "@/lib/envelope";
 import ViewOnlyPlayer from "./view-only-player";
@@ -50,6 +50,8 @@ export default function Converter() {
   const blobRef = useRef<Blob | null>(null);
   const mimeRef = useRef("video/mp4");
   const restoredRef = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState("");
 
   function replaceObjectUrl(next: string | null) {
     if (objectUrlRef.current) {
@@ -167,10 +169,34 @@ export default function Converter() {
 
   function handleClear() {
     setInput("");
+    setFileName("");
     blobRef.current = null;
     replaceObjectUrl(null);
     setStatus({ kind: "idle" });
     sessionStorage.removeItem(CODE_STORAGE_KEY);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
+  async function handleFile(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    try {
+      const text = (await file.text()).trim();
+      if (!text) {
+        setStatus({ kind: "error", text: "That file is empty." });
+        return;
+      }
+      setInput(text);
+      setFileName(file.name);
+      setStatus({ kind: "idle" });
+    } catch {
+      setStatus({ kind: "error", text: "Could not read that file." });
+    }
   }
 
   function downloadBlob() {
@@ -220,7 +246,7 @@ export default function Converter() {
     <div className="shell">
       <header className="hero">
         <h1>Watch video</h1>
-        <p className="lede">Paste the code you were given, then press Play.</p>
+        <p className="lede">Paste the code or attach the file, then press Play.</p>
       </header>
 
       <section className="panel" aria-label="Code">
@@ -238,6 +264,19 @@ export default function Converter() {
         />
 
         <div className="toolbar">
+          <div className="file-row">
+            <label className="btn ghost file-btn">
+              Attach file
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".txt,.b64,.base64,text/plain"
+                onChange={handleFile}
+                disabled={status.kind === "busy"}
+              />
+            </label>
+            {fileName ? <span className="file-name">{fileName}</span> : null}
+          </div>
           <div className="actions">
             <button
               type="button"
