@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 
 type ViewOnlyPlayerProps = {
   src: string;
+  checkoutBusy: boolean;
   onError: () => void;
+  onDownload: () => void;
 };
 
 function formatTime(seconds: number): string {
@@ -17,11 +19,25 @@ function formatTime(seconds: number): string {
   return `${mins}:${secs}`;
 }
 
+function previewSize(videoWidth: number, videoHeight: number): {
+  width: number;
+  height: number;
+} {
+  const width = Math.max(160, Math.min(480, Math.round(videoWidth * 0.25)));
+  const height = Math.max(1, Math.round((videoHeight / videoWidth) * width));
+  return { width, height };
+}
+
 function blockSave(event: { preventDefault: () => void }) {
   event.preventDefault();
 }
 
-export default function ViewOnlyPlayer({ src, onError }: ViewOnlyPlayerProps) {
+export default function ViewOnlyPlayer({
+  src,
+  checkoutBusy,
+  onError,
+  onDownload,
+}: ViewOnlyPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
@@ -46,13 +62,13 @@ export default function ViewOnlyPlayer({ src, onError }: ViewOnlyPlayerProps) {
 
     const paint = () => {
       if (video.videoWidth > 0 && video.videoHeight > 0) {
-        if (
-          canvas.width !== video.videoWidth ||
-          canvas.height !== video.videoHeight
-        ) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
+        const size = previewSize(video.videoWidth, video.videoHeight);
+        if (canvas.width !== size.width || canvas.height !== size.height) {
+          canvas.width = size.width;
+          canvas.height = size.height;
         }
+        context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = "low";
         context.drawImage(video, 0, 0, canvas.width, canvas.height);
       }
       rafRef.current = requestAnimationFrame(paint);
@@ -124,6 +140,7 @@ export default function ViewOnlyPlayer({ src, onError }: ViewOnlyPlayerProps) {
         onContextMenu={blockSave}
         onDoubleClick={togglePlay}
       />
+      <p className="player-preview-label">Preview</p>
       <div className="player-bar">
         <button type="button" className="btn ghost player-toggle" onClick={togglePlay}>
           {playing ? "Pause" : "Play"}
@@ -148,6 +165,14 @@ export default function ViewOnlyPlayer({ src, onError }: ViewOnlyPlayerProps) {
         <span className="player-time">
           {formatTime(current)} / {formatTime(duration)}
         </span>
+        <button
+          type="button"
+          className="btn primary player-download"
+          onClick={onDownload}
+          disabled={checkoutBusy}
+        >
+          {checkoutBusy ? "Redirecting…" : "Download at higher quality"}
+        </button>
       </div>
     </div>
   );
