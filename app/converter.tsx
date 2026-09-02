@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { decodeBase64ToBytes, parseBase64Input } from "@/lib/decode-base64";
 import { decryptEnvelope, isEnvelope } from "@/lib/envelope";
+import ViewOnlyPlayer from "./view-only-player";
 
 type Status =
   | { kind: "idle" }
@@ -148,12 +149,9 @@ export default function Converter() {
 
       <section className="panel player-panel" aria-label="Video">
         {videoUrl ? (
-          <video
+          <ViewOnlyPlayer
             key={videoUrl}
-            className="player"
             src={videoUrl}
-            controls
-            playsInline
             onError={() =>
               setStatus({
                 kind: "error",
