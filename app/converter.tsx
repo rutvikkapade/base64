@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { decodeBase64ToBytes, parseBase64Input } from "@/lib/decode-base64";
 import { decryptEnvelope, isEnvelope } from "@/lib/envelope";
 import ViewOnlyPlayer from "./view-only-player";
 
@@ -25,6 +24,7 @@ function friendlyError(error: unknown): string {
   if (
     message.includes("decrypt") ||
     message.includes("envelope") ||
+    message.includes("encrypted payload") ||
     message.includes("base64") ||
     message.includes("truncated") ||
     message.includes("corrupt")
@@ -88,24 +88,20 @@ export default function Converter() {
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     try {
-      if (isEnvelope(code)) {
-        const response = await fetch("/api/playback", { cache: "no-store" });
-        const body = (await response.json()) as {
-          secret?: string;
-          error?: string;
-        };
-        if (!response.ok || !body.secret) {
-          throw new Error(body.error || "Could not load the playback secret from the server.");
-        }
-        const { bytes, mime } = await decryptEnvelope(code, body.secret);
-        playBytes(bytes, mime);
-        sessionStorage.setItem(CODE_STORAGE_KEY, code);
-        return;
+      if (!isEnvelope(code)) {
+        throw new Error("Not an encrypted payload.");
       }
 
-      const { mimeType, payload } = parseBase64Input(code);
-      const bytes = decodeBase64ToBytes(payload);
-      playBytes(bytes, mimeType || "video/mp4");
+      const response = await fetch("/api/playback", { cache: "no-store" });
+      const body = (await response.json()) as {
+        secret?: string;
+        error?: string;
+      };
+      if (!response.ok || !body.secret) {
+        throw new Error(body.error || "Could not load the playback secret from the server.");
+      }
+      const { bytes, mime } = await decryptEnvelope(code, body.secret);
+      playBytes(bytes, mime);
       sessionStorage.setItem(CODE_STORAGE_KEY, code);
     } catch (error) {
       blobRef.current = null;
