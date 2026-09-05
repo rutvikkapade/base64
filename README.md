@@ -33,7 +33,7 @@ Send `payload.txt` to your client. Keep `PLAYBACK_SECRET` private.
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000), paste the `b64v1.…` text, click **Decrypt & play**. Unencrypted base64 still works as a fallback.
+Open [http://localhost:3000](http://localhost:3000), paste or attach the `b64v1.…` file, then click **Play**. Only encrypted payloads are accepted.
 
 ## Deploy on Vercel
 
